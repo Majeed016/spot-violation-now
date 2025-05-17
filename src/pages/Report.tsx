@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Camera, MapPin, Upload, Video, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";

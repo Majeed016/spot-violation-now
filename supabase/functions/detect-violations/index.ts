@@ -38,8 +38,12 @@ serve(async (req) => {
 
     console.log("Processing media:", imageUrl || videoUrl);
 
-    // Integrate with the Hugging Face space API
-    const results = await detectViolationsWithAPI(imageUrl || videoUrl, imageUrl ? "image" : "video");
+    // Determine media type and task type based on what we have
+    const mediaUrl = imageUrl || videoUrl;
+    const mediaType = imageUrl ? "image" : "video";
+    
+    // Detect violations using the API
+    const results = await detectViolationsWithAPI(mediaUrl, mediaType);
     
     return new Response(
       JSON.stringify(results),
@@ -69,69 +73,72 @@ async function detectViolationsWithAPI(mediaUrl: string, mediaType: "image" | "v
   try {
     console.log(`Sending ${mediaType} to ML API for violation detection`);
     
-    // Use the Hugging Face space API for detection
-    const response = await fetch("https://majeed786-spot-violation.hf.space/api/predict", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        data: [
-          mediaUrl
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API response error:", errorText);
-      throw new Error(`ML API responded with status: ${response.status}`);
-    }
-
-    // Parse the API response
-    const apiResult = await response.json();
-    console.log("ML API response:", apiResult);
-
-    // Extract violations from the API response
-    // The API might return data in a specific format, adjust the parsing accordingly
-    let detectedViolations: string[] = [];
-    let confidence = 0;
+    // We'll make multiple API calls to check for different violation types
+    const taskTypes = ["Helmet Violation", "Triple Riding", "Wrong Route", "Pothole"];
+    let allViolations: string[] = [];
+    let highestConfidence = 0;
     
-    // Process the API result - this structure may need adjustment based on actual API response
-    if (apiResult && apiResult.data && Array.isArray(apiResult.data)) {
-      // Assuming the API returns an array of detected violations
-      const violationsData = apiResult.data[0];
-      
-      if (typeof violationsData === 'string') {
-        // If the API returns a simple string
-        if (violationsData.toLowerCase().includes("no violation") || violationsData.trim() === "") {
-          detectedViolations = [];
-        } else {
-          // Split by commas or other separators if the API returns multiple violations in a string
-          detectedViolations = violationsData.split(',').map(v => v.trim());
-          // Filter out empty strings
-          detectedViolations = detectedViolations.filter(v => v.length > 0);
+    for (const taskType of taskTypes) {
+      try {
+        // Prepare the request to the Hugging Face API
+        const formData = new FormData();
+        formData.append("data", mediaUrl); // The image URL
+        formData.append("data", taskType); // The task type
+        
+        console.log(`Checking for ${taskType}...`);
+        
+        // Send request to the Hugging Face API
+        const response = await fetch("https://majeed786-spot-violation.hf.space/api/predict", {
+          method: "POST",
+          body: formData
+        });
+        
+        if (!response.ok) {
+          console.error(`API response error for ${taskType}:`, await response.text());
+          continue;
         }
-      } else if (Array.isArray(violationsData)) {
-        // If the API returns an array of violations
-        detectedViolations = violationsData.filter(v => typeof v === 'string' && v.trim() !== "");
+        
+        // Parse the API response
+        const apiResult = await response.json();
+        console.log(`${taskType} API response:`, apiResult);
+        
+        // Extract violations from the API response
+        if (apiResult && Array.isArray(apiResult.data)) {
+          const resultText = apiResult.data[0];
+          
+          if (typeof resultText === "string") {
+            // Skip if no violation detected
+            if (!resultText.toLowerCase().includes("no violation") && resultText.trim() !== "") {
+              // Map the violation based on task type
+              if (taskType === "Helmet Violation" && resultText.toLowerCase().includes("helmet")) {
+                allViolations.push("No Helmet");
+              } else if (taskType === "Triple Riding" && resultText.toLowerCase().includes("triple")) {
+                allViolations.push("Triple Riding");
+              } else if (taskType === "Wrong Route" && resultText.toLowerCase().includes("wrong")) {
+                allViolations.push("Wrong Side");
+              } else if (taskType === "Pothole" && resultText.toLowerCase().includes("pothole")) {
+                allViolations.push("Pothole");
+              }
+            }
+          }
+        }
+      } catch (taskError) {
+        console.error(`Error processing ${taskType}:`, taskError);
+        // Continue with the next task type
       }
-
-      // Calculate a confidence score - this is simplified and should be adjusted based on actual API
-      confidence = detectedViolations.length > 0 ? 0.85 : 0;
     }
-
-    // Fallback to simulation if we couldn't parse the API response
-    if (!apiResult || !apiResult.data) {
-      console.log("Using fallback simulation for detection");
-      return simulateViolationDetection(mediaType);
-    }
+    
+    // Remove duplicates
+    allViolations = [...new Set(allViolations)];
+    
+    // Calculate confidence based on number of violations
+    const confidence = allViolations.length > 0 ? 0.9 : 0;
     
     return {
-      detectedViolations,
+      detectedViolations: allViolations,
       confidence,
       shouldAutoVerify: confidence > 0.8,
-      message: detectedViolations.length > 0 ? "Violations detected" : "No violations detected"
+      message: allViolations.length > 0 ? "Violations detected" : "No violations detected"
     };
   } catch (error) {
     console.error("API detection error:", error);
@@ -151,9 +158,7 @@ function simulateViolationDetection(mediaType: "image" | "video") {
     "Triple Riding", 
     "No Helmet", 
     "Wrong Side", 
-    "Signal Jump",
-    "Overloading",
-    "Others"
+    "Pothole"
   ];
   
   // For demo purposes: randomly detect 0-2 violations
@@ -175,7 +180,7 @@ function simulateViolationDetection(mediaType: "image" | "video") {
   return {
     detectedViolations,
     confidence,
-    shouldAutoVerify: confidence > 0.8, // Changed to 0.8 for easier testing
+    shouldAutoVerify: confidence > 0.8,
     message: detectedViolations.length > 0 ? "Violations detected" : "No violations detected"
   };
 }
