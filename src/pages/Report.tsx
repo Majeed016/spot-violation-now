@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Camera, MapPin, Upload, Video, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -353,10 +352,14 @@ const Report = () => {
         image_url: mediaUrl,
         ml_detected: detectedViolations.length > 0,
         ml_confidence: detectionConfidence,
-        ml_violations: detectedViolations,
+        ml_violations: detectedViolations, // Convert array to string
         challan_amount: randomChallanAmount,
         status: initialStatus
       });
+      
+      // Convert the array to a string for storage in the database
+      // This fixes the type mismatch error
+      const mlViolationsString = detectedViolations.length > 0 ? detectedViolations.join(", ") : null;
       
       // Insert report data into the database
       const { data: reportData, error: insertError } = await supabase.from('reports').insert({
@@ -370,7 +373,7 @@ const Report = () => {
         image_url: mediaUrl,
         ml_detected: detectedViolations.length > 0,
         ml_confidence: detectionConfidence,
-        ml_violations: detectedViolations.length > 0 ? detectedViolations : null,
+        ml_violations: mlViolationsString, // Convert array to string
         challan_amount: randomChallanAmount,
         status: initialStatus,
         // If auto-verified by ML, add points
