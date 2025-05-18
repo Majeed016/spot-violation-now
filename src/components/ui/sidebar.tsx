@@ -45,7 +45,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="hidden h-screen border-r bg-background md:block">
+    <div className="hidden md:block md:h-screen border-r bg-background">
       <div className="flex h-full flex-col py-4">
         <div className="px-4 py-2">
           <h2 className="text-xl font-bold">SpotViolation</h2>

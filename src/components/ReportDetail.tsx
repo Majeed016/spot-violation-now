@@ -214,7 +214,7 @@ export const ReportDetail = ({ reportId, onClose }: { reportId: string; onClose:
             <div className="border rounded-lg p-3 bg-muted/20">
               <p className="text-sm font-medium">AI Detection Results</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                {(report.ml_violations as string[]).map((violation, idx) => (
+                {(Array.isArray(report.ml_violations) ? report.ml_violations : [report.ml_violations]).map((violation: string, idx: number) => (
                   <Badge key={idx} variant="outline">{violation}</Badge>
                 ))}
               </div>

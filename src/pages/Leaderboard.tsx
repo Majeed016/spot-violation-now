@@ -100,7 +100,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="px-4 py-6 pb-20">
+    <div className="container px-4 py-6 pb-20 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Leaderboard</h1>
 
       {userSubscribed === false && (

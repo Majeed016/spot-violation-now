@@ -73,72 +73,50 @@ async function detectViolationsWithAPI(mediaUrl: string, mediaType: "image" | "v
   try {
     console.log(`Sending ${mediaType} to ML API for violation detection`);
     
-    // We'll make multiple API calls to check for different violation types
-    const taskTypes = ["Helmet Violation", "Triple Riding", "Wrong Route", "Pothole"];
-    let allViolations: string[] = [];
-    let highestConfidence = 0;
-    
-    for (const taskType of taskTypes) {
-      try {
-        // Prepare the request to the Hugging Face API
-        const formData = new FormData();
-        formData.append("data", mediaUrl); // The image URL
-        formData.append("data", taskType); // The task type
-        
-        console.log(`Checking for ${taskType}...`);
-        
-        // Send request to the Hugging Face API
-        const response = await fetch("https://majeed786-spot-violation.hf.space/api/predict", {
-          method: "POST",
-          body: formData
-        });
-        
-        if (!response.ok) {
-          console.error(`API response error for ${taskType}:`, await response.text());
-          continue;
-        }
-        
-        // Parse the API response
-        const apiResult = await response.json();
-        console.log(`${taskType} API response:`, apiResult);
-        
-        // Extract violations from the API response
-        if (apiResult && Array.isArray(apiResult.data)) {
-          const resultText = apiResult.data[0];
-          
-          if (typeof resultText === "string") {
-            // Skip if no violation detected
-            if (!resultText.toLowerCase().includes("no violation") && resultText.trim() !== "") {
-              // Map the violation based on task type
-              if (taskType === "Helmet Violation" && resultText.toLowerCase().includes("helmet")) {
-                allViolations.push("No Helmet");
-              } else if (taskType === "Triple Riding" && resultText.toLowerCase().includes("triple")) {
-                allViolations.push("Triple Riding");
-              } else if (taskType === "Wrong Route" && resultText.toLowerCase().includes("wrong")) {
-                allViolations.push("Wrong Side");
-              } else if (taskType === "Pothole" && resultText.toLowerCase().includes("pothole")) {
-                allViolations.push("Pothole");
-              }
-            }
-          }
-        }
-      } catch (taskError) {
-        console.error(`Error processing ${taskType}:`, taskError);
-        // Continue with the next task type
-      }
+    const formData = new FormData();
+    const imageBlob = await (await fetch(mediaUrl)).blob();
+    formData.append("file", imageBlob, "upload.jpg");
+
+    const response = await fetch("https://2928-124-123-182-16.ngrok-free.app/api/predict", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("API response error:", errText);
+      throw new Error("API call failed");
     }
-    
-    // Remove duplicates
-    allViolations = [...new Set(allViolations)];
-    
-    // Calculate confidence based on number of violations
-    const confidence = allViolations.length > 0 ? 0.9 : 0;
-    
+
+    const apiResult = await response.json();
+    console.log("ML API response:", apiResult);
+
+    // Extract detected violations
+    const detectedViolations: string[] = [];
+
+    if (apiResult.helmet_violation?.detected) {
+      detectedViolations.push("No Helmet");
+    }
+
+    if (apiResult.triple_riding?.detected) {
+      detectedViolations.push("Triple Riding");
+    }
+
+    if (apiResult.wrong_route?.detected) {
+      detectedViolations.push("Wrong Side");
+    }
+
+    if (apiResult.pothole?.detected) {
+      detectedViolations.push("Pothole");
+    }
+
+    const confidence = detectedViolations.length > 0 ? 0.9 : 0;
+
     return {
-      detectedViolations: allViolations,
+      detectedViolations,
       confidence,
       shouldAutoVerify: confidence > 0.8,
-      message: allViolations.length > 0 ? "Violations detected" : "No violations detected"
+      message: detectedViolations.length > 0 ? "Violations detected" : "No violations detected"
     };
   } catch (error) {
     console.error("API detection error:", error);

@@ -161,6 +161,9 @@ export type Database = {
           latitude: number | null
           location: string
           longitude: number | null
+          ml_confidence: number | null
+          ml_detected: boolean | null
+          ml_violations: string | null
           number_plate: string | null
           points: number
           status: Database["public"]["Enums"]["report_status"]
@@ -177,6 +180,9 @@ export type Database = {
           latitude?: number | null
           location: string
           longitude?: number | null
+          ml_confidence?: number | null
+          ml_detected?: boolean | null
+          ml_violations?: string | null
           number_plate?: string | null
           points?: number
           status?: Database["public"]["Enums"]["report_status"]
@@ -193,6 +199,9 @@ export type Database = {
           latitude?: number | null
           location?: string
           longitude?: number | null
+          ml_confidence?: number | null
+          ml_detected?: boolean | null
+          ml_violations?: string | null
           number_plate?: string | null
           points?: number
           status?: Database["public"]["Enums"]["report_status"]
